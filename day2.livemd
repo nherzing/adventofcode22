@@ -1,0 +1,68 @@
+# Day Two
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTwo do
+  def solve1(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&score/1)
+    |> Enum.sum()
+  end
+
+  def solve2(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&score2/1)
+    |> Enum.sum()
+  end
+
+  defp score(s) do
+    [a, b] = String.split(s, " ")
+    w_score(a, b) + b_score(b)
+  end
+
+  defp score2(s) do
+    [a, b] = String.split(s, " ")
+    c = pick(a, b)
+    w_score(a, c) + b_score(c)
+  end
+
+  defp b_score("X"), do: 1
+  defp b_score("Y"), do: 2
+  defp b_score("Z"), do: 3
+
+  defp w_score("A", "X"), do: 3
+  defp w_score("A", "Y"), do: 6
+  defp w_score("A", "Z"), do: 0
+  defp w_score("B", "X"), do: 0
+  defp w_score("B", "Y"), do: 3
+  defp w_score("B", "Z"), do: 6
+  defp w_score("C", "X"), do: 6
+  defp w_score("C", "Y"), do: 0
+  defp w_score("C", "Z"), do: 3
+
+  defp pick("A", "X"), do: "Z"
+  defp pick("A", "Y"), do: "X"
+  defp pick("A", "Z"), do: "Y"
+  defp pick("B", "X"), do: "X"
+  defp pick("B", "Y"), do: "Y"
+  defp pick("B", "Z"), do: "Z"
+  defp pick("C", "X"), do: "Y"
+  defp pick("C", "Y"), do: "Z"
+  defp pick("C", "Z"), do: "X"
+end
+
+DayTwo.solve2(Kino.Input.read(input))
+```
