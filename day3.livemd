@@ -1,0 +1,64 @@
+# Day Three
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayThree do
+  def solve1(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&score/1)
+    |> Enum.sum()
+  end
+
+  def solve2(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.chunk_every(3)
+    |> Enum.map(&score2/1)
+    |> Enum.sum()
+  end
+
+  defp score(s) do
+    s
+    |> String.to_charlist()
+    |> Enum.split(floor(String.length(s) / 2))
+    |> then(fn {a, b} -> [a, b] end)
+    |> Enum.map(&MapSet.new/1)
+    |> Enum.reduce(&MapSet.intersection/2)
+    |> Enum.to_list()
+    |> hd()
+    |> priority()
+  end
+
+  defp score2(g) do
+    g
+    |> Enum.map(&String.to_charlist/1)
+    |> Enum.map(&MapSet.new/1)
+    |> Enum.reduce(&MapSet.intersection/2)
+    |> Enum.to_list()
+    |> hd()
+    |> priority()
+  end
+
+  defp priority(c) do
+    if ?a <= c && c <= ?z do
+      c - ?a + 1
+    else
+      c - ?A + 27
+    end
+  end
+end
+
+DayThree.solve2(Kino.Input.read(input))
+```
