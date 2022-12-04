@@ -1,0 +1,54 @@
+# Day Four
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayFour do
+  def solve1(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&parse/1)
+    |> Enum.filter(&fully_overlap?/1)
+    |> length()
+  end
+
+  def solve2(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&parse/1)
+    |> Enum.filter(&any_overlap?/1)
+    |> length()
+  end
+
+  defp parse(s) do
+    s
+    |> String.split(",")
+    |> Enum.map(fn s ->
+      s
+      |> String.split("-")
+      |> Enum.map(&String.to_integer/1)
+    end)
+  end
+
+  defp fully_overlap?([[a1, b1], [a2, b2]]) do
+    (a1 <= a2 && b1 >= b2) || (a2 <= a1 && b2 >= b1)
+  end
+
+  defp any_overlap?([[a1, b1] = p1, [a2, b2] = p2]) do
+    fully_overlap?([p1, p2]) ||
+      (a1 <= a2 && b1 >= a2) || (a2 <= a1 && b2 >= a1)
+  end
+end
+
+DayFour.solve2(Kino.Input.read(input))
+```
