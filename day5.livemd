@@ -1,0 +1,119 @@
+# Day Five
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayFive do
+  def solve1(input) do
+    {stacks, instructions} = parse(input)
+
+    apply_all(stacks, instructions)
+    |> Enum.map(&hd/1)
+  end
+
+  def solve2(input) do
+    {stacks, instructions} = parse(input)
+
+    apply_all2(stacks, instructions)
+    |> Enum.map(&hd/1)
+  end
+
+  defp apply_all(stacks, []) do
+    stacks
+  end
+
+  defp apply_all(stacks, [i | instructions]) do
+    stacks =
+      Enum.reduce(1..i[:n], stacks, fn _, stacks ->
+        doit(stacks, i[:from], i[:to])
+      end)
+
+    apply_all(stacks, instructions)
+  end
+
+  defp apply_all2(stacks, []) do
+    stacks
+  end
+
+  defp apply_all2(stacks, [i | instructions]) do
+    v =
+      stacks
+      |> Enum.at(i.from - 1)
+      |> Enum.take(i.n)
+
+    stacks
+    |> List.update_at(i.from - 1, &Enum.drop(&1, i.n))
+    |> List.update_at(i.to - 1, &(v ++ &1))
+    |> apply_all2(instructions)
+  end
+
+  defp doit(stacks, from, to) do
+    v =
+      stacks
+      |> Enum.at(from - 1)
+      |> hd()
+
+    stacks
+    |> List.update_at(from - 1, fn [_ | l] -> l end)
+    |> List.update_at(to - 1, fn l -> [v | l] end)
+  end
+
+  defp parse(s) do
+    [s, i] = String.split(s, "\n\n")
+
+    stacks = parse_stacks(s)
+    instructions = parse_instructions(i)
+
+    {stacks, instructions}
+  end
+
+  defp parse_stacks(s) do
+    lines = String.split(s, "\n", trim: true)
+
+    lines =
+      lines
+      |> Enum.take(length(lines) - 1)
+      |> Enum.map(&String.to_charlist/1)
+      |> Enum.map(&Enum.chunk_every(&1, 4))
+      |> Enum.reverse()
+
+    stacks = Enum.map(1..length(hd(lines)), fn _ -> [] end)
+
+    Enum.reduce(lines, stacks, fn line, stacks ->
+      line
+      |> Enum.zip(stacks)
+      |> Enum.map(fn
+        {[?\s | _], stack} -> stack
+        {c, stack} -> [Enum.at(c, 1) | stack]
+      end)
+    end)
+  end
+
+  defp parse_instructions(s) do
+    s
+    |> String.split("\n", trim: true)
+    |> Enum.map(fn l ->
+      Regex.named_captures(~r/move (?<n>\d+) from (?<from>\d+) to (?<to>\d+)/, l)
+    end)
+    |> Enum.map(fn %{"n" => n, "from" => f, "to" => t} ->
+      %{
+        n: String.to_integer(n),
+        from: String.to_integer(f),
+        to: String.to_integer(t)
+      }
+    end)
+  end
+end
+
+DayFive.solve2(Kino.Input.read(input))
+```
