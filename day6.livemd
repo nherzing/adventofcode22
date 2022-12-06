@@ -1,0 +1,45 @@
+# Day Six
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DaySix do
+  def solve1(input) do
+    list = String.to_charlist(input)
+
+    Enum.zip([list, Enum.drop(list, 1), Enum.drop(list, 2), Enum.drop(list, 3)])
+    |> Enum.find_index(fn {a, b, c, d} ->
+      MapSet.size(MapSet.new([a, b, c, d])) == 4
+    end)
+    |> then(fn i -> i + 4 end)
+  end
+
+  def solve2(input) do
+    list = String.to_charlist(input)
+
+    0..13
+    |> Enum.map(fn i -> Enum.drop(list, i) end)
+    |> Enum.zip()
+    |> Enum.find_index(fn vs ->
+      vs
+      |> Tuple.to_list()
+      |> MapSet.new()
+      |> MapSet.size()
+      |> then(&(&1 == 14))
+    end)
+    |> then(&(&1 + 14))
+  end
+end
+
+DaySix.solve2(Kino.Input.read(input))
+```
