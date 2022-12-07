@@ -1,0 +1,97 @@
+# Day Seven
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DaySeven do
+  def solve1(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> parse()
+    |> dir_sizes()
+    |> Enum.filter(fn {_, s} -> s <= 100_000 end)
+    |> Enum.map(fn {_, s} -> s end)
+    |> Enum.sum()
+  end
+
+  def solve2(input) do
+    dir_sizes =
+      input
+      |> String.split("\n", trim: true)
+      |> parse()
+      |> dir_sizes()
+
+    used = dir_sizes[[]]
+    free = 70_000_000 - used
+    needed = 30_000_000 - free
+
+    dir_sizes
+    |> Enum.map(fn {_, s} -> s end)
+    |> Enum.filter(fn s -> s >= needed end)
+    |> Enum.sort()
+    |> hd()
+  end
+
+  defp dir_sizes(%{files: files}) do
+    Enum.reduce(files, %{}, fn {[_name | path], size}, acc ->
+      update_dir_size(path, size, acc)
+    end)
+  end
+
+  defp update_dir_size([], size, acc) do
+    Map.update(acc, [], size, &(&1 + size))
+  end
+
+  defp update_dir_size(path, size, acc) do
+    update_dir_size(Enum.drop(path, 1), size, Map.update(acc, path, size, &(&1 + size)))
+  end
+
+  defp parse(lines) do
+    parse(lines, %{pwd: "/", files: %{}})
+  end
+
+  defp parse([], acc) do
+    acc
+  end
+
+  defp parse(["$ cd /" | rest], acc) do
+    parse(rest, %{acc | pwd: []})
+  end
+
+  defp parse(["$ cd .." | rest], acc) do
+    parse(rest, %{acc | pwd: Enum.drop(acc.pwd, 1)})
+  end
+
+  defp parse(["$ cd " <> dir | rest], acc) do
+    parse(rest, %{acc | pwd: [dir | acc.pwd]})
+  end
+
+  defp parse(["$ ls" | rest], acc) do
+    {entries, rest} = Enum.split_while(rest, &(!String.starts_with?(&1, "$")))
+
+    files =
+      Enum.reduce(entries, acc.files, fn
+        "dir" <> _, files ->
+          files
+
+        entry, files ->
+          [size, name] = String.split(entry, " ")
+          Map.put(files, [name | acc.pwd], String.to_integer(size))
+      end)
+
+    parse(rest, %{acc | files: files})
+  end
+end
+
+DaySeven.solve2(Kino.Input.read(input))
+```
