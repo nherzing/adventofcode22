@@ -1,0 +1,183 @@
+# Day Eight
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayEight do
+  def solve1(input) do
+    input
+    |> parse()
+    |> find_visible()
+    |> Map.values()
+    |> Enum.filter(fn x -> x end)
+    |> length()
+  end
+
+  def solve2(input) do
+    map = parse(input)
+
+    map
+    |> Map.keys()
+    |> Enum.map(&scenic_score(map, &1))
+    |> Enum.max()
+  end
+
+  def print(result) do
+    dx = result |> Map.keys() |> Enum.map(&elem(&1, 0)) |> Enum.max()
+    dy = result |> Map.keys() |> Enum.map(&elem(&1, 1)) |> Enum.max()
+
+    for j <- 0..dy do
+      for i <- 0..dx do
+        IO.write(if result[{i, j}], do: "T", else: "F")
+      end
+
+      IO.write("\n")
+    end
+
+    result
+  end
+
+  def find_visible(map) do
+    dx = map |> Map.keys() |> Enum.map(&elem(&1, 0)) |> Enum.max()
+    dy = map |> Map.keys() |> Enum.map(&elem(&1, 1)) |> Enum.max()
+
+    for i <- 0..dx,
+        j <- 0..dy,
+        reduce: %{} do
+      acc ->
+        Map.put(acc, {i, j}, visible?(map, {i, j}))
+    end
+  end
+
+  def edge?(map, {x, y}) do
+    dx = map |> Map.keys() |> Enum.map(&elem(&1, 0)) |> Enum.max()
+    dy = map |> Map.keys() |> Enum.map(&elem(&1, 1)) |> Enum.max()
+
+    x == 0 || y == 0 || x == dx || y == dy
+  end
+
+  def visible_left?(map, {x, y}) do
+    0..(x - 1)
+    |> Enum.all?(fn i -> map[{i, y}] < map[{x, y}] end)
+  end
+
+  def visible_right?(map, {x, y}) do
+    dx = map |> Map.keys() |> Enum.map(&elem(&1, 0)) |> Enum.max()
+
+    dx..(x + 1)
+    |> Enum.all?(fn i -> map[{i, y}] < map[{x, y}] end)
+  end
+
+  def visible_top?(map, {x, y}) do
+    0..(y - 1)
+    |> Enum.all?(fn i -> map[{x, i}] < map[{x, y}] end)
+  end
+
+  def visible_bottom?(map, {x, y}) do
+    dy = map |> Map.keys() |> Enum.map(&elem(&1, 1)) |> Enum.max()
+
+    dy..(y + 1)
+    |> Enum.all?(fn i -> map[{x, i}] < map[{x, y}] end)
+  end
+
+  def visible?(map, pt) do
+    edge?(map, pt) ||
+      visible_left?(map, pt) ||
+      visible_right?(map, pt) ||
+      visible_top?(map, pt) ||
+      visible_bottom?(map, pt)
+  end
+
+  def score_left(_, {0, _}) do
+    0
+  end
+
+  def score_left(map, {x, y}) do
+    (x - 1)..0
+    |> Enum.reduce_while(0, fn i, acc ->
+      if map[{i, y}] < map[{x, y}] do
+        {:cont, acc + 1}
+      else
+        {:halt, acc + 1}
+      end
+    end)
+  end
+
+  def score_right(map, {x, y}) do
+    dx = map |> Map.keys() |> Enum.map(&elem(&1, 0)) |> Enum.max()
+
+    if x == dx do
+      0
+    else
+      (x + 1)..dx
+      |> Enum.reduce_while(0, fn i, acc ->
+        if map[{i, y}] < map[{x, y}] do
+          {:cont, acc + 1}
+        else
+          {:halt, acc + 1}
+        end
+      end)
+    end
+  end
+
+  def score_up(_, {_, 0}) do
+    0
+  end
+
+  def score_up(map, {x, y}) do
+    (y - 1)..0
+    |> Enum.reduce_while(0, fn i, acc ->
+      if map[{x, i}] < map[{x, y}] do
+        {:cont, acc + 1}
+      else
+        {:halt, acc + 1}
+      end
+    end)
+  end
+
+  def score_down(map, {x, y}) do
+    dy = map |> Map.keys() |> Enum.map(&elem(&1, 1)) |> Enum.max()
+
+    if y == dy do
+      0
+    else
+      (y + 1)..dy
+      |> Enum.reduce_while(0, fn i, acc ->
+        if map[{x, i}] < map[{x, y}] do
+          {:cont, acc + 1}
+        else
+          {:halt, acc + 1}
+        end
+      end)
+    end
+  end
+
+  def scenic_score(map, pt) do
+    score_left(map, pt) * score_right(map, pt) * score_up(map, pt) * score_down(map, pt)
+  end
+
+  def parse(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&String.to_charlist/1)
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {row, i}, acc ->
+      row
+      |> Enum.with_index()
+      |> Enum.reduce(acc, fn {c, j}, acc -> Map.put(acc, {i, j}, c - ?0) end)
+    end)
+  end
+end
+
+DayEight.solve2(Kino.Input.read(input))
+```
