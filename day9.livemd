@@ -1,0 +1,108 @@
+# Day Nine
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayNine do
+  def solve1(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> eval()
+    |> MapSet.size()
+  end
+
+  def solve2(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> eval2()
+    |> MapSet.size()
+  end
+
+  defp eval(lines) do
+    eval(lines, {0, 0}, {0, 0}, MapSet.new())
+  end
+
+  defp eval([], _h, _t, visited) do
+    visited
+  end
+
+  defp eval([line | rest], h, t, visited) do
+    [dir, count] = String.split(line, " ")
+
+    {h, t, visited} =
+      Enum.reduce(1..String.to_integer(count), {h, t, visited}, fn _, {h, t, visited} ->
+        step(dir, h, t, visited)
+      end)
+
+    eval(rest, h, t, visited)
+  end
+
+  defp step(dir, h, t, visited) do
+    new_h = move_head(h, dir)
+    new_t = move_tail(new_h, t)
+    {new_h, new_t, MapSet.put(visited, new_t)}
+  end
+
+  defp eval2(lines) do
+    eval2(lines, {0, 0}, Enum.map(1..9, fn _ -> {0, 0} end), MapSet.new())
+  end
+
+  defp eval2([], _h, _t, visited) do
+    visited
+  end
+
+  defp eval2([line | rest], h, t, visited) do
+    [dir, count] = String.split(line, " ")
+
+    {h, t, visited} =
+      Enum.reduce(1..String.to_integer(count), {h, t, visited}, fn _, {h, t, visited} ->
+        step2(dir, h, t, visited)
+      end)
+
+    eval2(rest, h, t, visited)
+  end
+
+  defp step2(dir, h, t, visited) do
+    new_h = move_head(h, dir)
+
+    {last_new_t, new_t} =
+      Enum.reduce(t, {new_h, []}, fn t, {h, acc} ->
+        new_t = move_tail(h, t)
+        {new_t, [new_t | acc]}
+      end)
+
+    {new_h, Enum.reverse(new_t), MapSet.put(visited, last_new_t)}
+  end
+
+  defp move_head({x, y}, "R"), do: {x + 1, y}
+  defp move_head({x, y}, "L"), do: {x - 1, y}
+  defp move_head({x, y}, "U"), do: {x, y - 1}
+  defp move_head({x, y}, "D"), do: {x, y + 1}
+
+  defp move_tail({hx, hy}, {tx, ty}) do
+    cond do
+      abs(hx - tx) <= 1 && abs(hy - ty) <= 1 -> {tx, ty}
+      hx == tx && hy > ty -> {tx, ty + 1}
+      hx == tx && hy < ty -> {tx, ty - 1}
+      hy == ty && hx > tx -> {tx + 1, ty}
+      hy == ty && hx < tx -> {tx - 1, ty}
+      hx > tx && hy > ty -> {tx + 1, ty + 1}
+      hx > tx && hy < ty -> {tx + 1, ty - 1}
+      hx < tx && hy > ty -> {tx - 1, ty + 1}
+      hx < tx && hy < ty -> {tx - 1, ty - 1}
+    end
+  end
+end
+
+DayNine.solve2(Kino.Input.read(input))
+```
