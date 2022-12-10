@@ -1,0 +1,71 @@
+# Day Ten
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTen do
+  def solve1(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.flat_map_reduce(1, &eval/2)
+    |> elem(0)
+    |> score()
+  end
+
+  def solve2(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.flat_map_reduce(1, &eval/2)
+    |> elem(0)
+    |> draw()
+  end
+
+  defp eval("noop", x) do
+    {[x], x}
+  end
+
+  defp eval("addx " <> inc, x) do
+    new_x = x + String.to_integer(inc)
+    {[x, x], new_x}
+  end
+
+  defp score(xs) do
+    xs
+    |> Enum.with_index(1)
+    |> Enum.drop(19)
+    |> Enum.take_every(40)
+    |> Enum.map(fn {a, b} -> a * b end)
+    |> Enum.sum()
+  end
+
+  defp draw(xs) do
+    xs
+    |> Enum.chunk_every(40)
+    |> Enum.each(fn line ->
+      line
+      |> Enum.with_index()
+      |> Enum.each(fn {x, i} ->
+        if abs(x - i) <= 1 do
+          IO.write("#")
+        else
+          IO.write(".")
+        end
+      end)
+
+      IO.puts("")
+    end)
+  end
+end
+
+DayTen.solve2(Kino.Input.read(input))
+```
