@@ -1,0 +1,96 @@
+# Day Eleven
+
+## Section
+
+```elixir
+defmodule DayEleven do
+  def divisor do
+    5 * 11 * 2 * 13 * 7 * 3 * 17 * 19
+  end
+
+  def starting_monkeys do
+    [
+      %{
+        items: [65, 78],
+        update: fn x -> x * 3 end,
+        throw: fn x -> if rem(x, 5) == 0, do: 2, else: 3 end,
+        inspects: 0
+      },
+      %{
+        items: [54, 78, 86, 79, 73, 64, 85, 88],
+        update: fn x -> x + 8 end,
+        throw: fn x -> if rem(x, 11) == 0, do: 4, else: 7 end,
+        inspects: 0
+      },
+      %{
+        items: [69, 97, 77, 88, 87],
+        update: fn x -> x + 2 end,
+        throw: fn x -> if rem(x, 2) == 0, do: 5, else: 3 end,
+        inspects: 0
+      },
+      %{
+        items: [99],
+        update: fn x -> x + 4 end,
+        throw: fn x -> if rem(x, 13) == 0, do: 1, else: 5 end,
+        inspects: 0
+      },
+      %{
+        items: [60, 57, 52],
+        update: fn x -> x * 19 end,
+        throw: fn x -> if rem(x, 7) == 0, do: 7, else: 6 end,
+        inspects: 0
+      },
+      %{
+        items: [91, 82, 85, 73, 84, 53],
+        update: fn x -> x + 5 end,
+        throw: fn x -> if rem(x, 3) == 0, do: 4, else: 1 end,
+        inspects: 0
+      },
+      %{
+        items: [88, 74, 68, 56],
+        update: fn x -> x * x end,
+        throw: fn x -> if rem(x, 17) == 0, do: 0, else: 2 end,
+        inspects: 0
+      },
+      %{
+        items: [54, 82, 72, 71, 53, 99, 67],
+        update: fn x -> x + 1 end,
+        throw: fn x -> if rem(x, 19) == 0, do: 6, else: 0 end,
+        inspects: 0
+      }
+    ]
+  end
+
+  def solve1() do
+    Enum.reduce(1..10000, starting_monkeys(), fn _, monkeys ->
+      step(monkeys)
+    end)
+    |> Enum.map(fn m -> m.inspects end)
+    |> Enum.sort(:desc)
+    |> Enum.take(2)
+    |> then(fn [a, b] -> a * b end)
+  end
+
+  def step(monkeys) do
+    0..(length(monkeys) - 1)
+    |> Enum.reduce(monkeys, fn i, monkeys ->
+      monkey = Enum.at(monkeys, i)
+
+      Enum.reduce(monkey.items, monkeys, fn item, monkeys ->
+        new_item = rem(monkey.update.(item), divisor())
+        new_monkey = monkey.throw.(new_item)
+
+        monkeys
+        |> List.update_at(i, fn m ->
+          %{m | items: Enum.drop(m.items, 1), inspects: m.inspects + 1}
+        end)
+        |> List.update_at(new_monkey, fn m ->
+          %{m | items: [new_item | m.items]}
+        end)
+      end)
+    end)
+  end
+end
+
+DayEleven.solve1()
+```
