@@ -1,0 +1,93 @@
+# Day Twelve
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTwelve do
+  def solve1(input) do
+    {grid, s, e} = parse(input)
+
+    min_dist(grid, s, e, %{s => 0})[e]
+  end
+
+  def solve2(input) do
+    {grid, _, e} = parse(input)
+
+    grid
+    |> Enum.filter(fn {_pt, x} -> x == 0 end)
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.map(fn s -> min_dist(grid, s, e, %{s => 0})[e] end)
+    |> Enum.min()
+  end
+
+  defp min_dist(_grid, s, s, dists) do
+    dists
+  end
+
+  defp min_dist(grid, s, e, dists) do
+    d = dists[s] + 1
+
+    ns = neighbors(grid, s)
+
+    shorter =
+      Enum.filter(ns, fn n ->
+        !Map.has_key?(dists, n) || dists[n] > d
+      end)
+
+    new_dists =
+      Enum.reduce(shorter, dists, fn n, dists ->
+        Map.put(dists, n, d)
+      end)
+
+    Enum.reduce(shorter, new_dists, fn n, dists ->
+      min_dist(grid, n, e, dists)
+    end)
+  end
+
+  defp neighbors(grid, {x, y}) do
+    [{x - 1, y}, {x + 1, y}, {x, y - 1}, {x, y + 1}]
+    |> Enum.filter(fn pt ->
+      Map.has_key?(grid, pt) && grid[pt] <= grid[{x, y}] + 1
+    end)
+  end
+
+  defp parse(input) do
+    grid =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.with_index()
+      |> Enum.reduce(%{}, fn {line, y}, acc ->
+        line
+        |> String.to_charlist()
+        |> Enum.with_index()
+        |> Enum.reduce(acc, fn {c, x}, acc ->
+          Map.put(acc, {x, y}, c)
+        end)
+      end)
+
+    {
+      grid
+      |> Enum.map(fn
+        {pt, ?S} -> {pt, 0}
+        {pt, ?E} -> {pt, 25}
+        {pt, x} -> {pt, x - ?a}
+      end)
+      |> Map.new(),
+      grid |> Enum.find(fn {_pt, c} -> c == ?S end) |> elem(0),
+      grid |> Enum.find(fn {_pt, c} -> c == ?E end) |> elem(0)
+    }
+  end
+end
+
+DayTwelve.solve2(Kino.Input.read(input))
+```
