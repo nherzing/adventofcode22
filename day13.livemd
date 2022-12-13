@@ -1,0 +1,93 @@
+# Day Thirteen
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayThirteen do
+  def solve1(input) do
+    input
+    |> String.split("\n\n", trim: true)
+    |> Enum.map(fn pair ->
+      pair
+      |> String.split("\n")
+      |> Enum.map(&elem(Code.eval_string(&1), 0))
+    end)
+    |> Enum.map(fn [a, b] -> ordered?(a, b) end)
+    |> Enum.with_index(1)
+    |> Enum.filter(&elem(&1, 0))
+    |> Enum.map(&elem(&1, 1))
+    |> Enum.sum()
+  end
+
+  def solve2(input) do
+    sorted =
+      input
+      |> String.split("\n\n", trim: true)
+      |> Enum.flat_map(fn pair ->
+        pair
+        |> String.split("\n", trim: true)
+        |> Enum.map(&elem(Code.eval_string(&1), 0))
+      end)
+      |> then(fn ls -> [[[2]], [[6]] | ls] end)
+      |> Enum.sort(&ordered?/2)
+
+    (Enum.find_index(sorted, fn x -> x == [[2]] end) + 1) *
+      (Enum.find_index(sorted, fn x -> x == [[6]] end) + 1)
+  end
+
+  defp ordered?([], []) do
+    :cont
+  end
+
+  defp ordered?(x, ys) when is_number(x) and is_list(ys) do
+    ordered?([x], ys)
+  end
+
+  defp ordered?(xs, y) when is_list(xs) and is_number(y) do
+    ordered?(xs, [y])
+  end
+
+  defp ordered?([x | xs], [y | ys]) when is_number(x) and is_number(y) do
+    cond do
+      x < y -> true
+      x > y -> false
+      x == y -> ordered?(xs, ys)
+    end
+  end
+
+  defp ordered?([[] | _], [[_ | _] | _]) do
+    true
+  end
+
+  defp ordered?([[_ | _] | _], [[] | _]) do
+    false
+  end
+
+  defp ordered?([], [_ | _]) do
+    true
+  end
+
+  defp ordered?([_ | _], []) do
+    false
+  end
+
+  defp ordered?([x | xs], [y | ys]) do
+    case ordered?(x, y) do
+      :cont -> ordered?(xs, ys)
+      x -> x
+    end
+  end
+end
+
+DayThirteen.solve2(Kino.Input.read(input))
+```
