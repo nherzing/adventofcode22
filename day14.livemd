@@ -1,0 +1,123 @@
+# Day Fourteen
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayFourteen do
+  def solve1(input) do
+    walls =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.map(&parse_line/1)
+      |> Enum.reduce(&MapSet.union/2)
+
+    stop_at =
+      walls
+      |> Enum.max_by(&elem(&1, 1))
+      |> elem(1)
+
+    filled = fill({500, 0}, walls, stop_at)
+
+    MapSet.size(filled) - MapSet.size(walls)
+  end
+
+  def solve2(input) do
+    walls =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.map(&parse_line/1)
+      |> Enum.reduce(&MapSet.union/2)
+
+    floor_y =
+      (walls
+       |> Enum.max_by(&elem(&1, 1))
+       |> elem(1)) + 2
+
+    filled = fill2({500, 0}, walls, floor_y)
+
+    MapSet.size(filled) - MapSet.size(walls)
+  end
+
+  defp fill({x, y}, occupied, stop_at) do
+    case drop({x, y}, occupied, stop_at) do
+      :done -> occupied
+      occupied -> fill({x, y}, occupied, stop_at)
+    end
+  end
+
+  defp drop({x, y}, occupied, stop_at) do
+    cond do
+      y == stop_at -> :done
+      !MapSet.member?(occupied, {x, y + 1}) -> drop({x, y + 1}, occupied, stop_at)
+      !MapSet.member?(occupied, {x - 1, y + 1}) -> drop({x - 1, y + 1}, occupied, stop_at)
+      !MapSet.member?(occupied, {x + 1, y + 1}) -> drop({x + 1, y + 1}, occupied, stop_at)
+      true -> MapSet.put(occupied, {x, y})
+    end
+  end
+
+  defp fill2({x, y}, occupied, floor_y) do
+    if MapSet.member?(occupied, {x, y}) do
+      occupied
+    else
+      fill2({x, y}, drop2({x, y}, occupied, floor_y), floor_y)
+    end
+  end
+
+  defp drop2({x, y}, occupied, floor_y) do
+    cond do
+      !occupied?(occupied, {x, y + 1}, floor_y) -> drop2({x, y + 1}, occupied, floor_y)
+      !occupied?(occupied, {x - 1, y + 1}, floor_y) -> drop2({x - 1, y + 1}, occupied, floor_y)
+      !occupied?(occupied, {x + 1, y + 1}, floor_y) -> drop2({x + 1, y + 1}, occupied, floor_y)
+      true -> MapSet.put(occupied, {x, y})
+    end
+  end
+
+  defp occupied?(occupied, {x, y}, floor_y) do
+    MapSet.member?(occupied, {x, y}) || y == floor_y
+  end
+
+  defp parse_line(line) do
+    pts =
+      line
+      |> String.split(" -> ")
+      |> Enum.map(&parse_pt/1)
+
+    pts
+    |> Enum.zip(Enum.drop(pts, 1))
+    |> Enum.reduce(MapSet.new(), fn {a, b}, acc ->
+      follow(a, b, acc)
+    end)
+  end
+
+  defp follow({x1, y1}, {x1, y2}, acc) do
+    y1..y2
+    |> Enum.reduce(acc, fn y, acc -> MapSet.put(acc, {x1, y}) end)
+  end
+
+  defp follow({x1, y1}, {x2, y1}, acc) do
+    x1..x2
+    |> Enum.reduce(acc, fn x, acc -> MapSet.put(acc, {x, y1}) end)
+  end
+
+  defp parse_pt(s) do
+    [x, y] =
+      s
+      |> String.split(",")
+      |> Enum.map(&String.to_integer/1)
+
+    {x, y}
+  end
+end
+
+DayFourteen.solve2(Kino.Input.read(input))
+```
