@@ -1,0 +1,123 @@
+# Day Fifteen
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayFifteen do
+  def solve1(input) do
+    y_find = 2_000_000
+
+    sandb =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.map(&parse/1)
+
+    occupied =
+      sandb
+      |> Enum.flat_map(fn sb -> [sb.sensor, sb.beacon] end)
+      |> Enum.filter(fn {_, y} -> y == y_find end)
+      |> Enum.map(&elem(&1, 0))
+      |> MapSet.new()
+
+    sandb
+    |> Enum.map(&find_empty_y(&1, y_find))
+    |> Enum.reduce(&MapSet.union/2)
+    |> then(fn s -> MapSet.difference(s, occupied) end)
+    |> MapSet.size()
+  end
+
+  def solve2(input) do
+    sandb =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.map(&parse/1)
+
+    Enum.reduce_while(0..4_000_000, nil, fn y, _ ->
+      r = calc_row(sandb, y)
+
+      if r == [0..4_000_000] do
+        {:cont, nil}
+      else
+        IO.inspect(y)
+        IO.inspect(r)
+        {:halt, r}
+      end
+    end)
+  end
+
+  def calc_row(sandb, y_find) do
+    sandb
+    |> Enum.map(&find_empty_y(&1, y_find))
+    |> Enum.filter(fn x -> x end)
+    |> Enum.reduce([], &merge/2)
+  end
+
+  defp merge(a..b, []) do
+    [a..b]
+  end
+
+  defp merge(a..b, [c..d | rest]) do
+    cond do
+      a <= c && b >= d ->
+        merge(a..b, rest)
+
+      c <= a && d >= b ->
+        [c..d | rest]
+
+      a <= c && b >= c ->
+        merge(a..d, rest)
+
+      c <= a && d >= a ->
+        merge(c..b, rest)
+
+      true ->
+        [c..d | merge(a..b, rest)]
+    end
+  end
+
+  defp find_empty_y(%{sensor: {sx, sy} = s, beacon: b}, y) do
+    d = dist(s, b)
+    sy_to_y = abs(sy - y)
+
+    cond do
+      sy_to_y < d ->
+        side = d - sy_to_y
+        l = max(sx - side, 0)
+        r = min(sx + side, 4_000_000)
+        l..r
+
+      true ->
+        nil
+    end
+  end
+
+  defp dist({x1, y1}, {x2, y2}) do
+    abs(x1 - x2) + abs(y1 - y2)
+  end
+
+  defp parse(line) do
+    c =
+      Regex.named_captures(
+        ~r/Sensor at x=(?<sx>-?\d+), y=(?<sy>-?\d+): closest beacon is at x=(?<bx>-?\d+), y=(?<by>-?\d+)/,
+        line
+      )
+
+    %{
+      sensor: {String.to_integer(c["sx"]), String.to_integer(c["sy"])},
+      beacon: {String.to_integer(c["bx"]), String.to_integer(c["by"])}
+    }
+  end
+end
+
+DayFifteen.solve2(Kino.Input.read(input))
+```
