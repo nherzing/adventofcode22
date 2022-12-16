@@ -1,0 +1,131 @@
+# Day Sixteen
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DaySixteen do
+  def solve1(input) do
+    valves =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.map(&parse/1)
+      |> Enum.into(%{})
+
+    non_zero =
+      valves
+      |> Enum.filter(fn {_, m} -> m.flow_rate > 0 end)
+      |> Enum.map(&elem(&1, 0))
+
+    min_dists =
+      for a <- ["AA" | non_zero], b <- ["AA" | non_zero], into: %{} do
+        {{a, b}, min_dist(a, b, valves, [])}
+      end
+
+    max_flow_rate("AA", 30, 0, [], non_zero, valves, min_dists)
+  end
+
+  def solve2(input) do
+    valves =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.map(&parse/1)
+      |> Enum.into(%{})
+
+    all_non_zero =
+      valves
+      |> Enum.filter(fn {_, m} -> m.flow_rate > 0 end)
+      |> Enum.map(&elem(&1, 0))
+
+    min_dists =
+      for a <- ["AA" | all_non_zero], b <- ["AA" | all_non_zero], into: %{} do
+        {{a, b}, min_dist(a, b, valves, [])}
+      end
+
+    partitions(all_non_zero)
+    |> Enum.map(fn non_zero ->
+      max_flow_rate("AA", 26, 0, [], non_zero, valves, min_dists) +
+        max_flow_rate("AA", 26, 0, [], all_non_zero -- non_zero, valves, min_dists)
+    end)
+    |> Enum.max()
+  end
+
+  defp partitions([]) do
+    [[]]
+  end
+
+  defp partitions([x | xs]) do
+    xs
+    |> partitions()
+    |> Enum.flat_map(fn l ->
+      [l, [x | l]]
+    end)
+  end
+
+  defp max_flow_rate(loc, min_left, total_flow, opened, non_zero, valves, min_dists) do
+    case non_zero -- opened do
+      [] ->
+        total_flow + flow_rate(opened, valves) * min_left
+
+      to_open ->
+        to_open
+        |> Enum.filter(fn v -> min_dists[{loc, v}] < min_left end)
+        |> Enum.map(fn v ->
+          elapsed = min_dists[{loc, v}] + 1
+          min_left = min_left - elapsed
+          total_flow = total_flow + elapsed * flow_rate(opened, valves)
+
+          max_flow_rate(v, min_left, total_flow, [v | opened], non_zero, valves, min_dists)
+        end)
+        |> then(fn rs ->
+          do_nothing = total_flow + flow_rate(opened, valves) * min_left
+          [do_nothing | rs]
+        end)
+        |> Enum.max()
+    end
+  end
+
+  defp min_dist(a, a, _valves, _visited) do
+    0
+  end
+
+  defp min_dist(a, b, valves, visited) do
+    case valves[a].tunnels -- visited do
+      [] ->
+        99
+
+      to_visit ->
+        to_visit
+        |> Enum.map(fn c -> 1 + min_dist(c, b, valves, [c | visited]) end)
+        |> Enum.min()
+    end
+  end
+
+  defp flow_rate(valves_on, valves) do
+    valves_on
+    |> Enum.map(fn v -> valves[v].flow_rate end)
+    |> Enum.sum()
+  end
+
+  defp parse(line) do
+    c =
+      Regex.named_captures(
+        ~r/Valve (?<v>\w+) has flow rate=(?<f>\d+); tunnels? leads? to valves? (?<ts>.*)/,
+        line
+      )
+
+    {c["v"], %{flow_rate: String.to_integer(c["f"]), tunnels: String.split(c["ts"], ", ")}}
+  end
+end
+
+DaySixteen.solve2(Kino.Input.read(input))
+```
