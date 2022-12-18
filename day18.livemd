@@ -1,0 +1,101 @@
+# Day Eighteen
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayEighteen do
+  def solve1(input) do
+    pts =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.map(&parse/1)
+      |> MapSet.new()
+
+    pts
+    |> Enum.map(&exposed_sides(&1, pts))
+    |> Enum.sum()
+  end
+
+  def solve2(input) do
+    pts =
+      input
+      |> String.split("\n", trim: true)
+      |> Enum.map(&parse/1)
+      |> MapSet.new()
+
+    minx = Enum.map(pts, &elem(&1, 0)) |> Enum.min()
+    miny = Enum.map(pts, &elem(&1, 1)) |> Enum.min()
+    minz = Enum.map(pts, &elem(&1, 2)) |> Enum.min()
+
+    maxx = Enum.map(pts, &elem(&1, 0)) |> Enum.max()
+    maxy = Enum.map(pts, &elem(&1, 1)) |> Enum.max()
+    maxz = Enum.map(pts, &elem(&1, 2)) |> Enum.max()
+
+    pts
+    |> Enum.flat_map(&exposed_sides2(&1, pts))
+    |> Enum.filter(fn pt ->
+      case exposed?(pt, pts, MapSet.new(), {minx, miny, minz}, {maxx, maxy, maxz}) do
+        true -> true
+        _ -> false
+      end
+    end)
+    |> length()
+  end
+
+  defp exposed_sides({x, y, z}, pts) do
+    [{x - 1, y, z}, {x + 1, y, z}, {x, y - 1, z}, {x, y + 1, z}, {x, y, z - 1}, {x, y, z + 1}]
+    |> Enum.count(fn pt -> !MapSet.member?(pts, pt) end)
+  end
+
+  defp exposed_sides2({x, y, z}, pts) do
+    [{x - 1, y, z}, {x + 1, y, z}, {x, y - 1, z}, {x, y + 1, z}, {x, y, z - 1}, {x, y, z + 1}]
+    |> Enum.reject(fn pt -> MapSet.member?(pts, pt) end)
+  end
+
+  defp exposed?({x, y, z}, pts, checked, {minx, miny, minz}, {maxx, maxy, maxz}) do
+    if x < minx || x > maxx || y < miny || y > maxy || z < minz || z > maxz do
+      true
+    else
+      new_pts = [
+        {x - 1, y, z},
+        {x + 1, y, z},
+        {x, y - 1, z},
+        {x, y + 1, z},
+        {x, y, z - 1},
+        {x, y, z + 1}
+      ]
+
+      new_checked = MapSet.union(checked, MapSet.new(new_pts))
+
+      new_pts
+      |> Enum.reject(&MapSet.member?(checked, &1))
+      |> Enum.reject(&MapSet.member?(pts, &1))
+      |> Enum.reduce_while(new_checked, fn pt, checked ->
+        case exposed?(pt, pts, checked, {minx, miny, minz}, {maxx, maxy, maxz}) do
+          true -> {:halt, true}
+          checked -> {:cont, checked}
+        end
+      end)
+    end
+  end
+
+  defp parse(line) do
+    line
+    |> String.split(",")
+    |> Enum.map(&String.to_integer/1)
+    |> then(fn [x, y, z] -> {x, y, z} end)
+  end
+end
+
+DayEighteen.solve2(Kino.Input.read(input))
+```
