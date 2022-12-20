@@ -1,0 +1,79 @@
+# Day Twenty
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTwenty do
+  def solve1(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&String.to_integer/1)
+    |> Enum.with_index()
+    |> rotate()
+    |> Enum.map(&elem(&1, 0))
+    |> then(fn ls ->
+      i = Enum.find_index(ls, fn i -> i == 0 end)
+
+      (Enum.at(ls, rem(i + 1000, length(ls))) |> IO.inspect()) +
+        (Enum.at(ls, rem(i + 2000, length(ls))) |> IO.inspect()) +
+        (Enum.at(ls, rem(i + 3000, length(ls))) |> IO.inspect())
+    end)
+  end
+
+  def solve2(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&String.to_integer/1)
+    |> Enum.map(fn x -> x * 811_589_153 end)
+    |> Enum.with_index()
+    |> then(fn ls ->
+      Enum.reduce(1..10, ls, fn _, ls -> rotate(ls) end)
+    end)
+    |> Enum.map(&elem(&1, 0))
+    |> then(fn ls ->
+      i = Enum.find_index(ls, fn i -> i == 0 end)
+
+      (Enum.at(ls, rem(i + 1000, length(ls))) |> IO.inspect()) +
+        (Enum.at(ls, rem(i + 2000, length(ls))) |> IO.inspect()) +
+        (Enum.at(ls, rem(i + 3000, length(ls))) |> IO.inspect())
+    end)
+  end
+
+  defp rotate(ls) do
+    rotate(ls, 0)
+  end
+
+  defp rotate(ls, i_to_move) do
+    case Enum.find_index(ls, fn {_v, orig_i} -> i_to_move == orig_i end) do
+      nil ->
+        ls
+
+      i ->
+        {v, orig_i} = Enum.at(ls, i)
+        ls = List.delete_at(ls, i)
+
+        new_i =
+          if v < 0 do
+            rem(i + v, length(ls)) - 1
+          else
+            rem(i + v, length(ls))
+          end
+
+        ls = List.insert_at(ls, new_i, {v, orig_i})
+        rotate(ls, i_to_move + 1)
+    end
+  end
+end
+
+DayTwenty.solve2(Kino.Input.read(input))
+```
