@@ -1,0 +1,222 @@
+# Day Nineteen
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayNineteen do
+  def solve1(input) do
+    blueprints = parse_bp(input)
+
+    blueprints
+    |> Enum.map(fn {id, bp} ->
+      bots = %{"ore" => 1, "clay" => 0, "obsidian" => 0, "geode" => 0}
+      resources = %{"ore" => 0, "clay" => 0, "obsidian" => 0, "geode" => 0}
+
+      #      m = find_best(bp, 24, {bots, resources})
+
+      {m, ls} = to_first(bp, "geode", 2, 0, [{bots, resources}], 0)
+
+      m =
+        if m >= 24 do
+          0
+        else
+          Enum.map(ls, fn starting_position ->
+            find_best(bp, 24 - m, starting_position)
+          end)
+          |> Enum.max()
+        end
+
+      {id, m} |> IO.inspect()
+    end)
+    |> Enum.map(fn {id, m} -> id * m end)
+    |> Enum.sum()
+  end
+
+  def solve2(input) do
+    blueprints = parse_bp(input)
+
+    for i <- 0..3, j <- 0..3 do
+      IO.puts("DEFER #{i}, #{j}")
+
+      blueprints
+      |> Enum.map(fn {id, bp} ->
+        bots = %{"ore" => 1, "clay" => 0, "obsidian" => 0, "geode" => 0}
+        resources = %{"ore" => 0, "clay" => 0, "obsidian" => 0, "geode" => 0}
+
+        #      m = find_best(bp, 24, {bots, resources})
+
+        {m, ls} = to_first(bp, "geode", 1, 0, [{bots, resources}], i)
+        {m, ls} = to_first(bp, "geode", 2, m, ls, j)
+
+        m =
+          if m >= 32 do
+            0
+          else
+            Enum.map(ls, fn starting_position ->
+              find_best(bp, 32 - m, starting_position)
+            end)
+            |> Enum.max()
+          end
+
+        {id, m} |> IO.inspect()
+      end)
+    end
+  end
+
+  defp to_first(recipes, type, count, 32, starting_points, to_defer) do
+    {32, []}
+  end
+
+  defp to_first(recipes, type, count, min, starting_points, to_defer) do
+    all_next =
+      Enum.flat_map(starting_points, fn {bots, resources} ->
+        recipes
+        |> Enum.map(fn recipe -> take_action(recipe, {bots, resources}) end)
+        |> Enum.reject(&is_nil/1)
+        |> then(fn nexts -> [{bots, resources} | nexts] end)
+        |> Enum.map(fn {new_bots, new_resources} ->
+          {new_bots, collect_resources(bots, new_resources)}
+        end)
+      end)
+      |> Enum.uniq()
+
+    # all_next =
+    #   Enum.reject(all_next, fn {bots, resources} ->
+    #     Enum.any?(all_next, fn {b_bots, b_resources} ->
+    #       bots["ore"] < b_bots["ore"] && bots["clay"] < b_bots["clay"] &&
+    #         bots["obsidian"] < b_bots["obsidian"] &&
+    #         resources["ore"] < b_resources["ore"] && resources["clay"] < b_resources["clay"] &&
+    #         resources["obsidian"] < b_resources["obsidian"]
+    #     end)
+    #   end)
+
+    case Enum.filter(all_next, fn {bots, recipes} -> bots[type] >= count end) do
+      [] ->
+        to_first(recipes, type, count, min + 1, all_next, to_defer)
+
+      ls ->
+        if to_defer == 0 do
+          {min + 1, ls}
+        else
+          to_first(
+            recipes,
+            type,
+            count,
+            min + 1,
+            Enum.reject(all_next, fn {bots, recipes} -> bots[type] >= count end),
+            to_defer - 1
+          )
+        end
+    end
+  end
+
+  defp find_best(recipes) do
+    bots = %{"ore" => 1, "clay" => 0, "obsidian" => 0, "geode" => 0}
+    resources = %{"ore" => 0, "clay" => 0, "obsidian" => 0, "geode" => 0}
+    find_best(recipes, 19, {bots, resources})
+  end
+
+  defp find_best(_recipes, 0, {_bots, resources}) do
+    resources["geode"]
+  end
+
+  defp find_best(recipes, min_left, {bots, resources}) do
+    recipes
+    |> Enum.map(fn recipe -> take_action(recipe, {bots, resources}) end)
+    |> Enum.reject(&is_nil/1)
+    |> then(fn nexts -> [{bots, resources} | nexts] end)
+    |> Enum.map(fn {new_bots, new_resources} ->
+      find_best(
+        recipes,
+        min_left - 1,
+        {new_bots, collect_resources(bots, new_resources)}
+      )
+    end)
+    |> Enum.max()
+  end
+
+  defp collect_resources(bots, resources) do
+    Enum.reduce(bots, resources, fn {type, n}, resources ->
+      update_in(resources, [type], fn x -> x + n end)
+    end)
+  end
+
+  defp parse_bp(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&parse/1)
+    |> Enum.into(%{})
+  end
+
+  defp take_action({type, recipe}, {bots, resources}) do
+    if possible?(recipe, resources) do
+      {update_in(bots, [type], fn x -> x + 1 end),
+       Enum.reduce(recipe, resources, fn %{n: n, type: type}, resources ->
+         update_in(resources, [type], fn x -> x - n end)
+       end)}
+    else
+      nil
+    end
+  end
+
+  defp possible?(recipe, resources) do
+    Enum.all?(recipe, fn %{n: n, type: type} -> resources[type] >= n end)
+  end
+
+  defp parse(line) do
+    [id_s, bp_s] = String.split(line, ":")
+
+    id =
+      id_s
+      |> String.split(" ", trim: true)
+      |> then(fn [_, id] -> String.to_integer(id) end)
+
+    parts =
+      bp_s
+      |> String.split(".", trim: true)
+      |> Enum.map(fn part ->
+        Regex.named_captures(~r/Each (?<type>\w+) robot costs (?<recipe>.*)/, part)
+      end)
+      |> Enum.map(fn %{"type" => type, "recipe" => recipe} ->
+        recipe
+        |> String.split(" and ")
+        |> Enum.map(fn p ->
+          p
+          |> String.split(" ")
+          |> then(fn [n, type] -> %{n: String.to_integer(n), type: type} end)
+        end)
+        |> then(fn recipe -> {type, recipe} end)
+      end)
+      |> Enum.into(%{})
+
+    {id, parts}
+  end
+end
+
+DayNineteen.solve2(Kino.Input.read(input))
+
+# 1062 - 1100
+# 2772 too low, 3234
+```
+
+14, 11, 21
+
+defer 2, 0:
+26
+28
+{1, 12}
+27
+29
+{2, 9}
+25
+26
