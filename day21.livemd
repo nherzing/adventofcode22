@@ -1,0 +1,132 @@
+# Day Twenty One
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTwentyOne do
+  def solve1(input) do
+    monkeys =
+      input
+      |> String.split("\n", trim: true)
+      |> parse()
+
+    {v, _} = find_monkey("root", monkeys)
+    v
+  end
+
+  def solve2(input) do
+    monkeys =
+      input
+      |> String.split("\n", trim: true)
+      |> parse()
+
+    solve_monkey("root", monkeys)
+  end
+
+  defp solve_monkey("root", monkeys) do
+    {:op, _, ma, mb} = monkeys["root"]
+    monkeys = Map.put(monkeys, "humn", {:str, "humn"})
+    {va, monkeys} = find_monkey(ma, monkeys)
+    {{:done, v}, _} = find_monkey(mb, monkeys)
+
+    reduce(va, v)
+  end
+
+  defp reduce({:str, {"+", {:done, v}, vb}}, right) do
+    reduce(vb, right - v)
+  end
+
+  defp reduce({:str, {"+", vb, {:done, v}}}, right) do
+    reduce(vb, right - v)
+  end
+
+  defp reduce({:str, {"-", {:done, v}, vb}}, right) do
+    reduce(vb, v - right)
+  end
+
+  defp reduce({:str, {"-", vb, {:done, v}}}, right) do
+    reduce(vb, right + v)
+  end
+
+  defp reduce({:str, {"*", {:done, v}, vb}}, right) do
+    reduce(vb, div(right, v))
+  end
+
+  defp reduce({:str, {"*", vb, {:done, v}}}, right) do
+    reduce(vb, div(right, v))
+  end
+
+  defp reduce({:str, {"/", {:done, v}, vb}}, right) do
+    reduce(vb, div(v, right))
+  end
+
+  defp reduce({:str, {"/", vb, {:done, v}}}, right) do
+    reduce(vb, right * v)
+  end
+
+  defp reduce(a, b) do
+    {a, b}
+  end
+
+  defp find_monkey(m, monkeys) do
+    case monkeys[m] do
+      {:str, v} ->
+        {{:str, v}, monkeys}
+
+      {:done, v} ->
+        {{:done, v}, monkeys}
+
+      {:op, op, ma, mb} ->
+        {va, monkeys} = find_monkey(ma, monkeys)
+        {vb, monkeys} = find_monkey(mb, monkeys)
+        v = apply_op(op, va, vb)
+        monkeys = Map.put(monkeys, m, v)
+        {v, monkeys}
+    end
+  end
+
+  def ops("+"), do: fn a, b -> a + b end
+  def ops("-"), do: fn a, b -> a - b end
+  def ops("*"), do: fn a, b -> a * b end
+  def ops("/"), do: fn a, b -> div(a, b) end
+
+  def apply_op(op, {:str, _} = a, b) do
+    {:str, {op, a, b}}
+  end
+
+  def apply_op(op, a, {:str, _} = b) do
+    {:str, {op, a, b}}
+  end
+
+  def apply_op(op, {:done, a}, {:done, b}), do: {:done, ops(op).(a, b)}
+
+  defp parse(lines) do
+    lines
+    |> Enum.map(fn line ->
+      [name, eq] = String.split(line, ": ")
+
+      case Integer.parse(eq) do
+        :error ->
+          [a, op, b] = String.split(eq, " ", trim: true)
+          {name, {:op, op, a, b}}
+
+        {v, _} ->
+          {name, {:done, v}}
+      end
+    end)
+    |> Enum.into(%{})
+  end
+end
+
+DayTwentyOne.solve2(Kino.Input.read(input))
+```
