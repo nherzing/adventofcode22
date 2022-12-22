@@ -1,0 +1,241 @@
+# Day Twenty Two
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTwentyTwo do
+  def solve1(input) do
+    {map, path} = parse(input)
+
+    # wrap vs wrap2
+    follow(map, path)
+  end
+
+  defp follow(map, path) do
+    start_at =
+      map
+      |> Map.keys()
+      |> Enum.filter(fn {_x, y} -> y == 1 end)
+      |> Enum.min_by(fn {x, _y} -> x end)
+
+    {{x, y}, dir} = follow(start_at, {1, 0}, map, path)
+
+    1000 * y + 4 * x + facing(dir)
+  end
+
+  defp follow(pos, dir, _, []) do
+    {pos, dir}
+  end
+
+  defp follow(pos, dir, map, [:left | path]) do
+    follow(pos, turn(dir, :left), map, path)
+  end
+
+  defp follow(pos, dir, map, [:right | path]) do
+    follow(pos, turn(dir, :right), map, path)
+  end
+
+  defp follow(pos, dir, map, [0 | path]) do
+    follow(pos, dir, map, path)
+  end
+
+  defp follow(pos, dir, map, [steps | path]) do
+    case step(pos, dir, map) do
+      {:ok, npos, ndir} ->
+        follow(npos, ndir, map, [steps - 1 | path])
+
+      {:halt, npos, ndir} ->
+        follow(npos, ndir, map, path)
+    end
+  end
+
+  defp step({px, py} = pos, {dx, dy} = dir, map) do
+    npos = {px + dx, py + dy}
+
+    case map[npos] do
+      :open ->
+        {:ok, npos, dir}
+
+      :wall ->
+        {:halt, pos, dir}
+
+      nil ->
+        {npos, ndir} = wrap2(pos, dir)
+
+        case map[npos] do
+          :open ->
+            {:ok, npos, ndir}
+
+          :wall ->
+            {:halt, pos, dir}
+        end
+    end
+  end
+
+  # (pos, dir) -> npos
+  defp wrap({_x, y}, {1, 0}, map) do
+    map
+    |> Map.keys()
+    |> Enum.filter(fn {_, my} -> my == y end)
+    |> Enum.min_by(fn {mx, _} -> mx end)
+  end
+
+  defp wrap({_x, y}, {-1, 0}, map) do
+    map
+    |> Map.keys()
+    |> Enum.filter(fn {_, my} -> my == y end)
+    |> Enum.max_by(fn {mx, _} -> mx end)
+  end
+
+  defp wrap({x, _y}, {0, 1}, map) do
+    map
+    |> Map.keys()
+    |> Enum.filter(fn {mx, _} -> mx == x end)
+    |> Enum.min_by(fn {_, my} -> my end)
+  end
+
+  defp wrap({x, _y}, {0, -1}, map) do
+    map
+    |> Map.keys()
+    |> Enum.filter(fn {mx, _} -> mx == x end)
+    |> Enum.max_by(fn {_, my} -> my end)
+  end
+
+  @faces %{
+    front: {51..100, 1..50},
+    right: {101..150, 1..50},
+    bottom: {51..100, 51..100},
+    back: {51..100, 101..150},
+    left: {1..50, 101..150},
+    top: {1..50, 151..200}
+  }
+
+  @right {1, 0}
+  @down {0, 1}
+  @left {-1, 0}
+  @up {0, -1}
+
+  # (pos, dir) -> {npos, ndir}
+  defp wrap2({x, y} = pos, dir) do
+    case {face(pos), dir} do
+      # front
+      {:front, @right} -> nil
+      {:front, @down} -> nil
+      {:front, @left} -> {{1, mmap(y, 1..50, 150..101)}, @right}
+      {:front, @up} -> {{1, mmap(x, 51..100, 151..200)}, @right}
+      # right
+      {:right, @right} -> {{100, mmap(y, 1..50, 150..101)}, @left}
+      {:right, @down} -> {{100, mmap(x, 101..150, 51..100)}, @left}
+      {:right, @left} -> nil
+      {:right, @up} -> {{mmap(x, 101..150, 1..50), 200}, @up}
+      # back
+      {:back, @right} -> {{150, mmap(y, 101..150, 50..1)}, @left}
+      {:back, @down} -> {{50, mmap(x, 51..100, 151..200)}, @left}
+      {:back, @left} -> nil
+      {:back, @up} -> nil
+      # left
+      {:left, @right} -> nil
+      {:left, @down} -> nil
+      {:left, @left} -> {{51, mmap(y, 101..150, 50..1)}, @right}
+      {:left, @up} -> {{51, mmap(x, 1..50, 51..100)}, @right}
+      # top
+      {:top, @right} -> {{mmap(y, 151..200, 51..100), 150}, @up}
+      {:top, @down} -> {{mmap(x, 1..50, 101..150), 1}, @down}
+      {:top, @left} -> {{mmap(y, 151..200, 51..100), 1}, @down}
+      {:top, @up} -> nil
+      # bottom
+      {:bottom, @right} -> {{mmap(y, 51..100, 101..150), 50}, @up}
+      {:bottom, @down} -> nil
+      {:bottom, @left} -> {{mmap(y, 51..100, 1..50), 101}, @down}
+      {:bottom, @up} -> nil
+    end
+  end
+
+  def mmap(v, r1, r2) do
+    i = Enum.find_index(r1, fn w -> w == v end)
+    Enum.at(r2, i)
+  end
+
+  def mmapy(v, {_, r1}, {_, r2}) do
+    i = Enum.find_index(r1, fn w -> w == v end)
+    Enum.at(r2, i)
+  end
+
+  defp face({x, y}) do
+    @faces
+    |> Enum.find(fn {_, {xa..xb, ya..yb}} ->
+      xa <= x && x <= xb && ya <= y && y <= yb
+    end)
+    |> elem(0)
+  end
+
+  defp turn({1, 0}, :left), do: {0, -1}
+  defp turn({0, -1}, :left), do: {-1, 0}
+  defp turn({-1, 0}, :left), do: {0, 1}
+  defp turn({0, 1}, :left), do: {1, 0}
+
+  defp turn({1, 0}, :right), do: {0, 1}
+  defp turn({0, -1}, :right), do: {1, 0}
+  defp turn({-1, 0}, :right), do: {0, -1}
+  defp turn({0, 1}, :right), do: {-1, 0}
+
+  defp facing({1, 0}), do: 0
+  defp facing({0, 1}), do: 1
+  defp facing({-1, 0}), do: 2
+  defp facing({0, -1}), do: 3
+
+  defp parse(input) do
+    [map, path] = String.split(input, "\n\n", trim: true)
+
+    {
+      map
+      |> String.split("\n")
+      |> Enum.with_index(1)
+      |> Enum.reduce(%{}, fn {line, y}, acc ->
+        line
+        |> String.to_charlist()
+        |> Enum.with_index(1)
+        |> Enum.reduce(acc, fn {c, x}, acc ->
+          case c do
+            ?\s -> acc
+            ?# -> Map.put(acc, {x, y}, :wall)
+            ?. -> Map.put(acc, {x, y}, :open)
+          end
+        end)
+      end),
+      parse_path(path, [])
+    }
+  end
+
+  defp parse_path("", acc) do
+    Enum.reverse(acc)
+  end
+
+  defp parse_path("L" <> rest, acc) do
+    parse_path(rest, [:left | acc])
+  end
+
+  defp parse_path("R" <> rest, acc) do
+    parse_path(rest, [:right | acc])
+  end
+
+  defp parse_path(s, acc) do
+    r = Regex.named_captures(~r/(?<len>\d+)(?<rest>.*)/, s)
+    parse_path(r["rest"], [String.to_integer(r["len"]) | acc])
+  end
+end
+
+DayTwentyTwo.solve1(Kino.Input.read(input))
+
+# 139166 too low
+```
