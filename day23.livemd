@@ -1,0 +1,166 @@
+# Day Twenty Three
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTwentyThree do
+  @north {0, -1}
+  @south {0, 1}
+  @west {-1, 0}
+  @east {1, 0}
+
+  def solve1(input) do
+    elves = parse(input)
+
+    dirs = [@north, @south, @west, @east]
+
+    {elves, _} =
+      Enum.reduce(1..10, {elves, dirs}, fn i, {elves, dirs} ->
+        {step(elves, dirs), rotate(dirs)}
+      end)
+
+    xs = Enum.map(elves, &elem(&1, 0))
+    ys = Enum.map(elves, &elem(&1, 1))
+
+    min_x = Enum.min(xs)
+    max_x = Enum.max(xs)
+    min_y = Enum.min(ys)
+    max_y = Enum.max(ys)
+
+    (1 + max_x - min_x) * (1 + max_y - min_y) - MapSet.size(elves)
+  end
+
+  def solve2(input) do
+    elves = parse(input)
+
+    dirs = [@north, @south, @west, @east]
+
+    Stream.iterate(1, &(&1 + 1))
+    |> Enum.reduce_while({elves, dirs}, fn i, {elves, dirs} ->
+      new_elves = step(elves, dirs)
+
+      if elves == new_elves do
+        {:halt, i}
+      else
+        {:cont, {new_elves, rotate(dirs)}}
+      end
+    end)
+  end
+
+  defp step(elves, dirs) do
+    new_elves =
+      elves
+      |> Enum.filter(fn elf -> alone?(elf, elves) end)
+      |> MapSet.new()
+
+    proposed =
+      MapSet.difference(elves, new_elves)
+      |> Enum.reduce(%{}, fn {ex, ey} = elf, proposed ->
+        Enum.find(dirs, fn dir ->
+          look(dir, elf)
+          |> Enum.all?(fn pt -> !MapSet.member?(elves, pt) end)
+        end)
+        |> then(fn
+          {dx, dy} ->
+            Map.update(proposed, {ex + dx, ey + dy}, [elf], fn elves -> [elf | elves] end)
+
+          nil ->
+            Map.update(proposed, elf, [elf], fn elves -> [elf | elves] end)
+        end)
+      end)
+
+    Enum.reduce(proposed, new_elves, fn
+      {pt, [_elf]}, elves ->
+        MapSet.put(elves, pt)
+
+      {_pt, p_elves}, elves ->
+        MapSet.union(elves, MapSet.new(p_elves))
+    end)
+  end
+
+  defp look(@north, {x, y}) do
+    [{x - 1, y - 1}, {x, y - 1}, {x + 1, y - 1}]
+  end
+
+  defp look(@south, {x, y}) do
+    [{x - 1, y + 1}, {x, y + 1}, {x + 1, y + 1}]
+  end
+
+  defp look(@east, {x, y}) do
+    [{x + 1, y - 1}, {x + 1, y}, {x + 1, y + 1}]
+  end
+
+  defp look(@west, {x, y}) do
+    [{x - 1, y - 1}, {x - 1, y}, {x - 1, y + 1}]
+  end
+
+  defp alone?({x, y}, elves) do
+    [
+      {x - 1, y - 1},
+      {x, y - 1},
+      {x + 1, y - 1},
+      {x - 1, y},
+      {x + 1, y},
+      {x - 1, y + 1},
+      {x, y + 1},
+      {x + 1, y + 1}
+    ]
+    |> Enum.all?(fn pt -> !MapSet.member?(elves, pt) end)
+  end
+
+  defp rotate([l | ls]) do
+    ls ++ [l]
+  end
+
+  defp parse(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.with_index()
+    |> Enum.reduce(MapSet.new(), fn {line, y}, acc ->
+      line
+      |> String.to_charlist()
+      |> Enum.with_index()
+      |> Enum.reduce(acc, fn {c, x}, acc ->
+        if c == ?# do
+          MapSet.put(acc, {x, y})
+        else
+          acc
+        end
+      end)
+    end)
+  end
+
+  defp print(elves) do
+    xs = Enum.map(elves, &elem(&1, 0))
+    ys = Enum.map(elves, &elem(&1, 1))
+
+    min_x = Enum.min(xs)
+    max_x = Enum.max(xs)
+    min_y = Enum.min(ys)
+    max_y = Enum.max(ys)
+
+    for y <- min_y..max_y do
+      for x <- min_x..max_x do
+        IO.write(if MapSet.member?(elves, {x, y}), do: "#", else: ".")
+      end
+
+      IO.puts("")
+    end
+
+    IO.puts("")
+    IO.puts("")
+  end
+end
+
+DayTwentyThree.solve2(Kino.Input.read(input))
+```
