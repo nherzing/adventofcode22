@@ -1,0 +1,96 @@
+# Day Twenty Five
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTwentyFive do
+  @digits %{?2 => 2, ?1 => 1, ?0 => 0, ?- => -1, ?= => -2}
+  def solve1(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&to_decimal/1)
+    |> Enum.sum()
+    |> to_snafu(999)
+    |> to_str()
+  end
+
+  defp to_str(ls) do
+    (Enum.map(ls, &elem(&1, 0)) |> Enum.max())..0
+    |> Enum.map(fn i ->
+      case Enum.find(ls, fn {j, _} -> j == i end) do
+        nil -> ?0
+        {_, -2} -> ?=
+        {_, -1} -> ?-
+        {_, 1} -> ?1
+        {_, 2} -> ?2
+      end
+    end)
+  end
+
+  defp to_snafu(0, _) do
+    []
+  end
+
+  defp to_snafu(dec, limit) do
+    sign = if dec > 0, do: 1, else: -1
+
+    case Enum.find(maxns(limit), fn {_, mn} -> mn > abs(dec) end) do
+      nil ->
+        nil
+
+      {n, _} ->
+        case to_snafu(dec - sign * 2 * 5 ** n, n - 1) do
+          nil ->
+            case to_snafu(dec - sign * 5 ** n, n - 1) do
+              nil -> nil
+              sol -> [{n, sign * 1} | sol]
+            end
+
+          sol ->
+            [{n, sign * 2} | sol]
+        end
+    end
+  end
+
+  defp maxns(limit) do
+    Stream.iterate(0, &(&1 + 1))
+    |> Stream.map(fn n -> {n, maxn(n)} end)
+    |> Stream.take(limit + 1)
+  end
+
+  defp maxn(0) do
+    2
+  end
+
+  defp maxn(n) do
+    2 * 5 ** n + maxn(n - 1)
+  end
+
+  def to_decimal(str) when is_binary(str) do
+    str
+    |> String.to_charlist()
+    |> Enum.reverse()
+    |> to_decimal(1)
+  end
+
+  def to_decimal([], _) do
+    0
+  end
+
+  def to_decimal([l | ls], v) do
+    @digits[l] * v + to_decimal(ls, v * 5)
+  end
+end
+
+DayTwentyFive.solve1(Kino.Input.read(input))
+```

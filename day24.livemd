@@ -1,0 +1,151 @@
+# Day Twenty Four
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.7.0"}
+])
+```
+
+## Section
+
+```elixir
+input = Kino.Input.textarea("Input")
+```
+
+```elixir
+defmodule DayTwentyFour do
+  @north {0, -1}
+  @south {0, 1}
+  @east {1, 0}
+  @west {-1, 0}
+  @stay {0, 0}
+  @dirs [@north, @south, @east, @west, @stay]
+
+  def solve1(input) do
+    {map, s, e, h, w} = parse(input)
+
+    shortest_path(0, [s], e, h, w, map)
+  end
+
+  def solve2(input) do
+    {map, s, e, h, w} = parse(input)
+
+    {x, map} = shortest_path(0, [s], e, h, w, map)
+    {y, map} = shortest_path(0, [e], s, h, w, map)
+    {z, map} = shortest_path(0, [s], e, h, w, map)
+
+    x + y + z
+  end
+
+  defp shortest_path(n, positions, e, h, w, map) do
+    map = step_map(map, h, w)
+
+    new_positions =
+      positions
+      |> Enum.flat_map(fn {px, py} ->
+        @dirs
+        |> Enum.map(fn {dx, dy} -> {px + dx, py + dy} end)
+        |> Enum.filter(fn pos -> map[pos] == [] end)
+      end)
+      |> Enum.uniq()
+
+    if e in new_positions do
+      {n + 1, map}
+    else
+      shortest_path(n + 1, new_positions, e, h, w, map)
+    end
+  end
+
+  defp empty_map(h, w) do
+    for x <- 1..(w - 1), y <- 1..(h - 1), into: %{{1, 0} => [], {w - 1, h} => []} do
+      {{x, y}, []}
+    end
+  end
+
+  defp step_map(map, h, w) do
+    Enum.reduce(map, empty_map(h, w), fn
+      {pos, []}, acc ->
+        acc
+
+      {pos, bs}, acc ->
+        Enum.reduce(bs, acc, fn b, acc ->
+          Map.update(acc, stepb(b, pos, map, h, w), [b], fn bs -> [b | bs] end)
+        end)
+    end)
+  end
+
+  defp stepb({dx, dy}, {px, py}, map, h, w) do
+    {nx, ny} = npos = {px + dx, py + dy}
+
+    cond do
+      map[npos] -> npos
+      nx == 0 -> {w - 1, ny}
+      ny == 0 -> {nx, h - 1}
+      nx == w -> {1, ny}
+      ny == h -> {nx, 1}
+    end
+  end
+
+  defp parse(input) do
+    lines = String.split(input, "\n", trim: true)
+    h = length(lines)
+    w = String.length(hd(lines))
+
+    map =
+      lines
+      |> Enum.with_index()
+      |> Enum.reduce(%{}, fn {line, y}, acc ->
+        line
+        |> String.to_charlist()
+        |> Enum.with_index()
+        |> Enum.reduce(acc, fn {c, x}, acc ->
+          case c do
+            ?# -> acc
+            ?. -> Map.put(acc, {x, y}, [])
+            ?> -> Map.put(acc, {x, y}, [@east])
+            ?< -> Map.put(acc, {x, y}, [@west])
+            ?v -> Map.put(acc, {x, y}, [@south])
+            ?^ -> Map.put(acc, {x, y}, [@north])
+          end
+        end)
+      end)
+
+    start_pos =
+      map
+      |> Map.keys()
+      |> Enum.min_by(&elem(&1, 1))
+
+    end_pos =
+      map
+      |> Map.keys()
+      |> Enum.max_by(&elem(&1, 1))
+
+    {map, start_pos, end_pos, h - 1, w - 1}
+  end
+
+  defp print(map, h, w) do
+    for y <- 0..h do
+      for x <- 0..w do
+        c =
+          case map[{x, y}] do
+            nil -> "#"
+            [] -> "."
+            [@north] -> "^"
+            [@south] -> "v"
+            [@east] -> ">"
+            [@west] -> "<"
+            rest -> length(rest) |> Integer.to_string()
+          end
+
+        IO.write(c)
+      end
+
+      IO.write("\n")
+    end
+
+    IO.write("\n\n")
+  end
+end
+
+DayTwentyFour.solve2(Kino.Input.read(input))
+```
